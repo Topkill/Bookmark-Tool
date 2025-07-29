@@ -24,7 +24,8 @@ def parse_bookmarks(filepath):
 
 def deduplicate_and_generate_report(filepath, mode):
     """
-    主函数，执行去重、生成报告和创建新HTML文件。
+    主函数，执行去重。
+    【新逻辑】只有在发现重复项时才生成新的HTML文件。
     """
     start_time = time.time()
     
@@ -51,15 +52,25 @@ def deduplicate_and_generate_report(filepath, mode):
 
     duplicate_groups = {k: v for k, v in processed_items.items() if v['removed']}
 
-    print(f"分析完成: 发现 {len(duplicate_groups)} 个重复组，共 {sum(len(v['removed']) for v in duplicate_groups.values())} 个重复项将被移除。")
-    print("正在生成报告和新文件...")
+    # --- 这里是新增的核心判断逻辑 ---
+    if not duplicate_groups:
+        # 如果没有发现重复组
+        print("分析完成: 未发现任何重复项。")
+        print("将只生成一份确认报告，不会创建新的HTML文件。")
+        report_filename = generate_report_file(filepath, duplicate_groups, mode)
+        print(f"--> 确认报告已生成: {report_filename}")
+    else:
+        # 如果发现了重复组 (和之前的逻辑一样)
+        total_removed_items = sum(len(v['removed']) for v in duplicate_groups.values())
+        print(f"分析完成: 发现 {len(duplicate_groups)} 个重复组，共 {total_removed_items} 个重复项将被移除。")
+        print("正在生成报告和新的已清理文件...")
 
-    report_filename = generate_report_file(filepath, duplicate_groups, mode)
-    print(f"--> 详细报告已生成: {report_filename}")
+        report_filename = generate_report_file(filepath, duplicate_groups, mode)
+        print(f"--> 详细报告已生成: {report_filename}")
 
-    # 【修改】调用生成干净文件的函数时，传入 mode 参数
-    clean_html_filename = generate_clean_html_file(filepath, unique_bookmarks, mode)
-    print(f"--> 去重后的新书签文件已生成: {clean_html_filename}")
+        clean_html_filename = generate_clean_html_file(filepath, unique_bookmarks, mode)
+        print(f"--> 去重后的新书签文件已生成: {clean_html_filename}")
+    # --- 判断逻辑结束 ---
 
     total_time = time.time() - start_time
     print(f"\n所有操作完成！总耗时: {total_time:.2f} 秒。")
